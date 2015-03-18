@@ -176,6 +176,8 @@ char        *path_aux;
 char        *path_home = (char *)PBS_SERVER_HOME;
 char        *mom_home;
 
+short mom_lock_flag = 0;
+
 extern std::vector<std::string> mom_status;
 #ifdef NVIDIA_GPUS
 extern std::vector<std::string> global_gpu_status;
@@ -4034,7 +4036,7 @@ void parse_command_line(
 
   errflg = 0;
 
-  while ((c = getopt(argc, argv, "a:A:c:C:d:DhH:l:L:mM:pPqrR:s:S:vwx-:")) != -1)
+  while ((c = getopt(argc, argv, "a:A:c:C:d:DhH:l:L:mM:pPqrR:s:S:vwxz-:")) != -1)
     {
     switch (c)
       {
@@ -4290,6 +4292,11 @@ void parse_command_line(
         port_care = FALSE;
 
         break;
+
+	/* rbudden : add a variable for the mom.lock for NFS mounted /var/spool/torque clusters */
+      case 'z':
+      	mom_lock_flag = 1;
+	break;
 
       case '?':
 
@@ -4689,10 +4696,19 @@ int setup_program_environment(void)
 
   check_log(); /* see if this log should be rolled */
 
-  if (!multi_mom)
+  if(mom_lock_flag)
+  {
+    sprintf(momLock, "mom.lock.%s", mom_host);
+  }
+  //if (!multi_mom)
+  else if(!multi_mom)
+  {
     sprintf(momLock,"mom.lock");
+  }
   else
+  {
     sprintf(momLock, "mom%d.lock", pbs_mom_port);
+  }
 
   lockfds = open(momLock, O_CREAT | O_WRONLY, 0644);
 
